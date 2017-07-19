@@ -4,7 +4,7 @@ import requests
 
 from app_review.extensions import db
 from app_review.user.models import User
-from app_review.lib.github import GitHub
+from app_review.libs.github import GitHub
 
 
 auth_api_bp = Blueprint('auth_api', __name__)
