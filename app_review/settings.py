@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Application configuration."""
 import os
+import datetime
 
 
 class Config(object):
@@ -12,6 +13,8 @@ class Config(object):
     GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID')
     GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_EXPIRATION_DELTA = datetime.timedelta(days=1)
+    JWT_AUTH_USERNAME_KEY = 'email'
 
 
 class ProdConfig(Config):
