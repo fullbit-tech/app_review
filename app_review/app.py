@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """The app module, containing the app factory function."""
 from flask import Flask, render_template
+from flask_jwt import JWT
 
 from app_review.extensions import db, github
 from app_review.settings import ProdConfig
 
-from app_review.auth.views import auth_api_bp, auth_api
+from app_review.auth.views import (auth_api_bp, auth_api,
+                                   authenticate, identity)
+import app_review.user as user
 
 
 def create_app(config_object=ProdConfig):
@@ -25,6 +28,7 @@ def register_extensions(app):
     """Register Flask extensions."""
     db.init_app(app)
     github.init_app(app)
+    JWT(app, authenticate, identity)
 
 
 def register_blueprints(app):
@@ -39,7 +43,6 @@ def register_shellcontext(app):
         """Shell context objects."""
         return {
             'db': db,
-            'github': github}
-            #'User': user.models.User}
+            'User': user.models.User}
 
     app.shell_context_processor(shell_context)

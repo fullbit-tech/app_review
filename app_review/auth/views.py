@@ -1,6 +1,6 @@
-from flask import Blueprint, session, g, current_app, redirect, request
+from flask import Blueprint, g, request, redirect, current_app
 from flask_restful import Resource, Api
-import requests
+from flask_jwt import current_identity, jwt_required
 
 from app_review.extensions import db
 from app_review.user.models import User
@@ -13,87 +13,59 @@ auth_api = Api(auth_api_bp)
 
 @auth_api_bp.before_request
 def before_request():
-    g.user = None
-    if 'user_id' in session:
-        g.user = User.query.get(session['user_id'])
+    g.user = current_identity
 
 
-class GitHub(object):
-    def __init__(self, scope='user:email,repo'):
-        self.github_uri = 'https://github.com'
-        self.github_api_uri = 'https://api.github.com'
-        self.client_id = current_app.config['GITHUB_CLIENT_ID']
-        self.client_secret = current_app.config['GITHUB_CLIENT_SECRET']
-        self.scope = 'user:email,repo'
-
-    def authorize(self):
-        params = dict(scope=self.scope, client_id=self.client_id)
-        return redirect((
-            '{git_uri}/login/oauth/authorize'
-            '?scope={scope}&client_id={client_id}').format(
-                git_uri=self.github_uri,
-                scope=self.scope,
-                client_id=self.client_id),
-            code=302)
-
-    def authorize_access(self, code):
-        data = dict(client_id=self.client_id,
-                    client_secret=self.client_secret,
-                    code=code)
-        r = requests.post(
-            self.github_uri + '/login/oauth/access_token/',
-            json=data,
-            headers={'Accept': 'application/json'})
-        return r.json()
-
-    def get(self, resource, access_token):
-        params = dict(access_token=access_token)
-        r = requests.get(
-            self.github_api_uri + resource,
-            params=params,
-            headers={'Accept': 'application/json'})
-        return r.json()
+def authenticate(email, password):
+    """Flask-JWT authorization callback"""
+    user = User.query.filter_by(email=email).first()
+    if user and user.check_password(password):
+        return user
 
 
-class AuthCallBack(Resource):
+def identity(payload):
+    """Flask-JWT identity callback"""
+    user_id = payload['identity']
+    return User.query.filter_by(id=user_id).first()
+
+
+class GitHubAuthCallBack(Resource):
 
     def get(self):
+        """Callback for the Github oAuth authorization"""
         code = request.args.get('code')
+        state_token = request.args.get('state')
         github = GitHub()
-        auth_response = github.authorize_access(code)
+        auth_response = github.authorize_access(code, state_token)
         access_token = auth_response.get('access_token')
-        scope = auth_response.get('scope')
-        if access_token is None:
-            return {'error': 'login failed'}
-        emails = github.get('/user/emails', access_token)
-        for email in emails:
-            if email['primary'] == True and email['verified'] == True:
-                primary_email = email['email']
-                break
-        else:
-            return {'error': 'No verified email'}
-        user = User.query.filter_by(email=primary_email).first()
-        if user is None:
-            user = User(email=primary_email)
-            db.session.add(user)
+        user = User.query.filter_by(
+            github_state_token=state_token).first()
+        #scope = auth_response.get('scope')
+        if access_token is None or not user:
+            return {'error': 'Github authorization failed', 'access_token': access_token, 'state': state_token, 'user': user}
         user.github_access_token = access_token
+        db.session.add(user)
         db.session.commit()
-
-        session['user_id'] = user.id
-        return {"message": "success!"}
+        return {"message": "success"}
 
 
-class Auth(Resource):
+class GitHubAuth(Resource):
+
+    def _generate_github_auth_uri(self, user):
+        """Generates a redirect to github to begin authorization"""
+        return redirect(("http://github.com/login/oauth/authorize"
+                        "?client_id=" "{client_id}&scope={scope}"
+                        "&state={state}").format(
+                    client_id=current_app.config['GITHUB_CLIENT_ID'],
+                    scope='user:email,repo',
+                    state=user.github_state_token))
+
+    @jwt_required()
     def get(self):
-        if session.get('user_id', None) is None:
-            return GitHub().authorize()
-        else:
-            return {'message': g.user.id}
-
-    def delete(self):
-        session.pop('user_id', None)
-        return {'message': 'logged out'}
+        """Returns a github auth redirect"""
+        user = g.user
+        return self._generate_github_auth_uri(user)
 
 
-auth_api.add_resource(Auth, '/')
-auth_api.add_resource(AuthCallBack, '/callback')
+auth_api.add_resource(GitHubAuthCallBack, '/github/callback')
+auth_api.add_resource(GitHubAuth, '/github')
