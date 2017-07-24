@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
-from flask_github import GitHub
+from flask_jwt import JWT
 
 
 db = SQLAlchemy()
-github = GitHub()
+jwt = JWT
