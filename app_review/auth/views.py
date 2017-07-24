@@ -42,7 +42,7 @@ class GitHubAuthCallBack(Resource):
             github_state_token=state_token).first()
         #scope = auth_response.get('scope')
         if access_token is None or not user:
-            return {'error': 'Github authorization failed', 'access_token': access_token, 'state': state_token, 'user': user}
+            return {'error': 'Github authorization failed'}, 400
         user.github_access_token = access_token
         db.session.add(user)
         db.session.commit()
@@ -63,8 +63,7 @@ class GitHubAuth(Resource):
     @jwt_required()
     def get(self):
         """Returns a github auth redirect"""
-        user = g.user
-        return self._generate_github_auth_uri(user)
+        return self._generate_github_auth_uri(g.user)
 
 
 auth_api.add_resource(GitHubAuthCallBack, '/github/callback')
