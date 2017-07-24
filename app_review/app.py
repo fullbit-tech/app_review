@@ -8,7 +8,8 @@ from app_review.settings import ProdConfig
 
 from app_review.auth.views import (auth_api_bp, auth_api,
                                    authenticate, identity)
-import app_review.user as user
+from app_review.user.views import user_api_bp, user_api
+from app_review.user.models import User
 
 
 def create_app(config_object=ProdConfig):
@@ -34,7 +35,7 @@ def register_extensions(app):
 def register_blueprints(app):
     """Register Flask blueprints."""
     app.register_blueprint(auth_api_bp, url_prefix='/auth')
-    #app.register_blueprint(user.views.blueprint)
+    app.register_blueprint(user_api_bp, url_prefix='/user')
 
 
 def register_shellcontext(app):
@@ -43,6 +44,7 @@ def register_shellcontext(app):
         """Shell context objects."""
         return {
             'db': db,
-            'User': user.models.User}
+            'User': User,
+        }
 
     app.shell_context_processor(shell_context)
