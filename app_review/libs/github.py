@@ -11,7 +11,6 @@ class GitHub(object):
         self.scope = 'user:email,repo'
 
     def authorize(self):
-        params = dict(scope=self.scope, client_id=self.client_id)
         return redirect((
             '{git_uri}/login/oauth/authorize'
             '?scope={scope}&client_id={client_id}').format(
@@ -20,10 +19,11 @@ class GitHub(object):
                 client_id=self.client_id),
             code=302)
 
-    def authorize_access(self, code):
+    def authorize_access(self, code, state):
         data = dict(client_id=self.client_id,
                     client_secret=self.client_secret,
-                    code=code)
+                    code=code,
+                    state=state)
         r = requests.post(
             self.github_uri + '/login/oauth/access_token/',
             json=data,
