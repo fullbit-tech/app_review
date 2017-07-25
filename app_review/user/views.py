@@ -1,4 +1,4 @@
-from flask import Blueprint, g, request, redirect, current_app
+from flask import Blueprint, g, request
 from flask_restful import Resource, Api
 from flask_jwt import current_identity, jwt_required
 
@@ -7,7 +7,7 @@ from app_review.user.schemas import register_user_schema, user_schema
 from app_review.extensions import db
 
 
-user_api_bp = Blueprint('register_api', __name__)
+user_api_bp = Blueprint('user_api', __name__)
 user_api = Api(user_api_bp)
 
 
