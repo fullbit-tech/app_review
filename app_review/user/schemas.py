@@ -4,8 +4,8 @@ from app_review.user.models import User
 
 
 class RegisterUserSchema(Schema):
-    email = fields.Email()
-    password = fields.Str(load_only=True)
+    email = fields.Email(required=True)
+    password = fields.Str(load_only=True, required=True)
 
     @validates('email')
     def validate_email(self, email):
