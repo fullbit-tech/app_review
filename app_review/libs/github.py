@@ -2,17 +2,30 @@ import requests
 from flask import current_app, redirect
 
 
+class GitHubException(Exception):
+    pass
+
+
+def req_access_token(f):
+    def wrapper(*args, **kwargs):
+        if not args[0].access_token:
+            raise GitHubException('Requires access token')
+        return f(*args, **kwargs)
+    return wrapper
+
+
 class GitHub(object):
-    def __init__(self, scope='user:email,repo'):
-        self.github_uri = 'https://github.com'
-        self.github_api_uri = 'https://api.github.com'
+    def __init__(self, access_token=None, scope='user:email,repo'):
+        self.github_uri = 'https://github.com/'
+        self.github_api_uri = 'https://api.github.com/'
         self.client_id = current_app.config['GITHUB_CLIENT_ID']
         self.client_secret = current_app.config['GITHUB_CLIENT_SECRET']
+        self.access_token = access_token
         self.scope = 'user:email,repo'
 
     def authorize(self):
         return redirect((
-            '{git_uri}/login/oauth/authorize'
+            '{git_uri}login/oauth/authorize'
             '?scope={scope}&client_id={client_id}').format(
                 git_uri=self.github_uri,
                 scope=self.scope,
@@ -25,15 +38,25 @@ class GitHub(object):
                     code=code,
                     state=state)
         r = requests.post(
-            self.github_uri + '/login/oauth/access_token/',
+            self.github_uri + 'login/oauth/access_token/',
             json=data,
             headers={'Accept': 'application/json'})
+        r.raise_for_status()
         return r.json()
 
-    def get(self, resource, access_token):
-        params = dict(access_token=access_token)
+    @req_access_token
+    def _get(self, *args):
+        params = dict(access_token=self.access_token)
         r = requests.get(
-            self.github_api_uri + resource,
+            self.github_api_uri + '/'.join(args),
             params=params,
             headers={'Accept': 'application/json'})
+        r.raise_for_status()
         return r.json()
+
+    @req_access_token
+    def get_pull_request(self, owner, repo, number):
+        """Returns pull request info"""
+        return self._get(owner, repo, number)
+
+
