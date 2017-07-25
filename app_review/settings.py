@@ -10,11 +10,19 @@ class Config(object):
     SECRET_KEY = os.environ.get('APP_REVIEW_SECRET')
     APP_DIR = os.path.abspath(os.path.dirname(__file__))  # This directory
     PROJECT_ROOT = os.path.abspath(os.path.join(APP_DIR, os.pardir))
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Github oAuth
     GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID')
     GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # JWT Settings
     JWT_EXPIRATION_DELTA = datetime.timedelta(days=1)
     JWT_AUTH_USERNAME_KEY = 'email'
+
+    # AWS API
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 
 
 class ProdConfig(Config):
