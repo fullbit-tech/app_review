@@ -9,6 +9,7 @@ from app_review.auth.views import (auth_api_bp, auth_api,
                                    authenticate, identity)
 from app_review.user.views import user_api_bp, user_api
 from app_review.user.models import User
+from app_review.instance.views import instance_api_bp, instance_api
 
 
 def create_app(config_object=ProdConfig):
@@ -34,6 +35,7 @@ def register_blueprints(app):
     """Register Flask blueprints."""
     app.register_blueprint(auth_api_bp, url_prefix='/auth')
     app.register_blueprint(user_api_bp, url_prefix='/user')
+    app.register_blueprint(instance_api_bp)
 
 
 def register_shellcontext(app):
