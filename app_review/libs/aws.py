@@ -4,6 +4,7 @@ from flask import current_app
 
 
 class AWS(object):
+    """Base class for AWS calls"""
 
     def __init__(self):
         self.aws_access_key_id = current_app.config['AWS_ACCESS_KEY_ID']
@@ -21,7 +22,7 @@ class AWS(object):
 
 
 class EC2(AWS):
-    """Creates an ec2 image object"""
+    """Creates an ec2 object for working with instances"""
 
     def __init__(self, instance_id=None, ami_id='ami-5c557539',
                  instance_type='t2.micro'):
@@ -69,7 +70,7 @@ class EC2(AWS):
 
     def _wait_for_status(self, status):
         while self.instance.state != status:
-            time.sleep(10)
+            time.sleep(2)
             self.instance.update()
 
     def _create_and_start_instance(self):
