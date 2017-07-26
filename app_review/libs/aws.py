@@ -73,13 +73,13 @@ class EC2(AWS):
             time.sleep(2)
             self.instance.update()
 
-    def _create_and_start_instance(self):
+    def _create_and_start_instance(self, user_data):
         """Create and starts an instance"""
         self._reservation = self.connection.run_instances(
             self.ami_id,
             instance_type=self.instance_type,
             security_groups=self._security_groups,
-            key_name=self._key_name)
+            key_name=self._key_name, user_data=user_data)
         self._wait_for_status('running')
 
     def _start_instance(self):
@@ -106,11 +106,11 @@ class EC2(AWS):
         if self.instance:
             return self.instance.update()
 
-    def start(self):
+    def start(self, user_data=None):
         if self.instance:
             self._start_instance()
         else:
-            self._create_and_start_instance()
+            self._create_and_start_instance(user_data)
 
     def stop(self):
         self._stop_instance()
@@ -126,4 +126,3 @@ class EC2(AWS):
     def instance(self):
         if self._reservation:
             return self._reservation.instances[0]
-
