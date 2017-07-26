@@ -2,7 +2,7 @@
 """The app module, containing the app factory function."""
 from flask import Flask, render_template
 
-from app_review.extensions import db, jwt
+from app_review.extensions import db, jwt, migrate
 from app_review.settings import ProdConfig
 
 from app_review.auth.views import (auth_api_bp, auth_api,
@@ -29,6 +29,7 @@ def register_extensions(app):
     """Register Flask extensions."""
     db.init_app(app)
     jwt(app, authenticate, identity)
+    migrate.init_app(app, db)
 
 
 def register_blueprints(app):
