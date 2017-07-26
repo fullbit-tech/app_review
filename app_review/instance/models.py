@@ -5,7 +5,7 @@ from app_review.extensions import db
 class Instance(object):
     """Mixin for instance models"""
 
-    instance_id = db.Column(db.Integer)
+    instance_id = db.Column(db.String)
     instance_state = db.Column(db.String)
     instance_size = db.Column(db.String)
     instance_url = db.Column(db.String)
