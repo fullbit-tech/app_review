@@ -1,4 +1,4 @@
-from flask import Blueprint, g
+from flask import Blueprint, g, request
 from flask_restful import Resource, Api, abort
 from flask_jwt import current_identity, jwt_required
 
@@ -69,12 +69,17 @@ class PullRequest(Resource):
 
     @jwt_required()
     def delete(self, owner, repo, number):
+        """Stops or terminates a pull request instance"""
         self._get_pull_request(owner, repo, number)
         instance = self._get_instance(owner, repo, number, g.user)
+        terminate = request.args.get('terminate')
         if instance:
             ec2 = EC2(instance.instance_id)
-            ec2.terminate()
-            instance.instance_state = 'terminated'
+            if terminate:
+                ec2.terminate()
+            else:
+                ec2.stop()
+            instance.instance_state = ec2.state
             db.session.add(instance)
             db.session.commit()
         return dict(message="success")
