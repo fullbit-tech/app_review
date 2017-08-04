@@ -16,7 +16,7 @@ class RegisterUserSchema(Schema):
 
 class UserSchema(Schema):
     class Meta:
-        fields = ('email',)
+        fields = ('email', 'github_verified')
 
 
 register_user_schema = RegisterUserSchema()

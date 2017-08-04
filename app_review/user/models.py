@@ -31,3 +31,7 @@ class User(db.Model):
         """Create a random token to match a
            callback response with a user"""
         self.github_state_token = uuid.uuid4().hex
+
+    @property
+    def github_verified(self):
+        return self.github_access_token is not None
