@@ -50,13 +50,16 @@ class PullRequest(Resource):
         """Gets pull request information"""
         pull_request = self._get_pull_request(
             owner, repo, number)
+        instance = self._get_instance(owner, repo, number, g.user)
+        if instance:
+            pull_request['instance'] = instance or {}
         return pull_request_schema.dump(pull_request)
 
     @jwt_required()
     def post(self, owner, repo, number):
         """Starts an instance for a pull request"""
         payload = request.get_json()
-        self._get_pull_request(owner, repo, number)
+        pull_request = self._get_pull_request(owner, repo, number)
         recipe = None
         recipe_id = payload['recipe']
 
@@ -77,15 +80,13 @@ class PullRequest(Resource):
             instance.state = ec2.state
         db.session.add(instance)
         db.session.commit()
-        return dict(
-            url=instance.instance_url,
-            state=instance.instance_state,
-        )
+        pull_request['instance'] = instance
+        return pull_request_schema.dump(pull_request)
 
     @jwt_required()
     def delete(self, owner, repo, number):
         """Stops or terminates a pull request instance"""
-        self._get_pull_request(owner, repo, number)
+        pull_request = self._get_pull_request(owner, repo, number)
         instance = self._get_instance(owner, repo, number, g.user)
         terminate = request.args.get('terminate')
         if instance:
@@ -97,7 +98,8 @@ class PullRequest(Resource):
             instance.instance_state = ec2.state
             db.session.add(instance)
             db.session.commit()
-        return dict(message="success")
+        pull_request['instance'] = {} if terminate else instance
+        return pull_request_schema.dump(pull_request)
 
 
 instance_api.add_resource(
