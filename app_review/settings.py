@@ -44,6 +44,7 @@ class DevConfig(Config):
     # Put the db file in project root
     DB_PATH = os.path.join(Config.PROJECT_ROOT, DB_NAME)
     DEBUG_TB_ENABLED = True
+    APP_REVIEW_WEB_URL = 'http://192.168.2.22:3000'
 
 
 class TestConfig(Config):

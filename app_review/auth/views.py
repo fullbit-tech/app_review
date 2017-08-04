@@ -42,28 +42,30 @@ class GitHubAuthCallBack(Resource):
             github_state_token=state_token).first()
         #scope = auth_response.get('scope')
         if access_token is None or not user:
-            return {'error': 'Github authorization failed'}, 400
+            return redirect(current_app.config['APP_REVIEW_WEB_URL'] +
+                            '?github_auth=false');
         user.github_access_token = access_token
         db.session.add(user)
         db.session.commit()
-        return {"message": "success"}
+        return redirect(current_app.config['APP_REVIEW_WEB_URL'] +
+                        '?github_auth=true')
 
 
 class GitHubAuth(Resource):
 
     def _generate_github_auth_uri(self, user):
         """Generates a redirect to github to begin authorization"""
-        return redirect(("http://github.com/login/oauth/authorize"
-                        "?client_id=" "{client_id}&scope={scope}"
-                        "&state={state}").format(
+        return ("http://github.com/login/oauth/authorize"
+                "?client_id=" "{client_id}&scope={scope}"
+                "&state={state}").format(
                     client_id=current_app.config['GITHUB_CLIENT_ID'],
                     scope='user:email,repo',
-                    state=user.github_state_token))
+                    state=user.github_state_token)
 
     @jwt_required()
     def get(self):
-        """Returns a github auth redirect"""
-        return self._generate_github_auth_uri(g.user)
+        """Returns a github auth redirect url"""
+        return {'url': self._generate_github_auth_uri(g.user)}
 
 
 auth_api.add_resource(GitHubAuthCallBack, '/github/callback')
