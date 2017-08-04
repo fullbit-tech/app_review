@@ -88,7 +88,7 @@ class PullRequest(Resource):
         """Stops or terminates a pull request instance"""
         pull_request = self._get_pull_request(owner, repo, number)
         instance = self._get_instance(owner, repo, number, g.user)
-        terminate = request.args.get('terminate')
+        terminate = request.args.get('terminate') == 'true'
         if instance:
             ec2 = EC2(instance.instance_id)
             if terminate:
