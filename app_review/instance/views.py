@@ -77,7 +77,7 @@ class PullRequest(Resource):
                 ec2.instance.public_dns_name,
                 owner, repo, number, g.user, recipe)
         else:
-            instance.state = ec2.state
+            instance.instance_state = ec2.state
         db.session.add(instance)
         db.session.commit()
         pull_request['instance'] = instance
