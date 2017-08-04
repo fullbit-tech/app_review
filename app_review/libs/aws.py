@@ -102,7 +102,7 @@ class EC2(AWS):
             self._wait_for_status('terminated')
 
     def _get_instance_state(self):
-        """Returns the instances status"""
+        """Returns the instance status"""
         if self.instance:
             return self.instance.update()
 
