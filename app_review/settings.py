@@ -24,6 +24,8 @@ class Config(object):
     # AWS API
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_HOST_USERNAME = os.environ.get('AWS_HOST_USERNAME')
+    AWS_KEY_FILE = os.environ.get('AWS_KEY_FILE')
 
 
 class ProdConfig(Config):
