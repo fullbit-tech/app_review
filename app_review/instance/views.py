@@ -4,6 +4,7 @@ from flask_jwt import current_identity, jwt_required
 
 from app_review.libs.github import GitHub, GitHubException
 from app_review.libs.aws import EC2
+from app_review.libs.ssh import SSH
 from app_review.extensions import db
 from app_review.instance.schemas import (pull_request_schema,
                                          instance_schema)
@@ -68,7 +69,7 @@ class PullRequest(Resource):
         recipe = self._get_recipe(payload['recipe_id'], g.user)
 
         ec2 = EC2(instance.instance_id if instance else None)
-        ec2.start(recipe.script if recipe else None)
+        ec2.start()
         if not instance:
             instance = PullRequestInstance(
                 ec2.instance.id,
@@ -80,9 +81,17 @@ class PullRequest(Resource):
             instance.instance_state = ec2.state
             instance.recipe_id = recipe.id
             instance.instance_size = payload['instance_size']
+
+        pull_request['instance'] = instance
         db.session.add(instance)
         db.session.commit()
-        pull_request['instance'] = instance
+
+        ssh = SSH(instance.instance_url, g.user.github_access_token)
+        ssh.wait_for_conn()
+        ssh.clone_repository(pull_request['base']['repo']['clone_url'])
+        ssh.checkout_branch(pull_request['head']['ref'])
+        ssh.run_script(recipe.script)
+
         return pull_request_schema.dump(pull_request)
 
     @jwt_required()
