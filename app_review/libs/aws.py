@@ -42,6 +42,27 @@ class EC2(AWS):
             if reservations:
                 self._reservation = reservations[0]
 
+    def start(self, user_data=None):
+        if self.instance:
+            self._start_instance()
+        else:
+            self._create_and_start_instance(user_data)
+
+    def stop(self):
+        self._stop_instance()
+
+    def terminate(self):
+        self._terminate_instance()
+
+    @property
+    def state(self):
+        return self._get_instance_state()
+
+    @property
+    def instance(self):
+        if self._reservation:
+            return self._reservation.instances[0]
+
     @property
     def _permitted_groups(self):
         """Returns a list of permitted groups,
@@ -106,23 +127,3 @@ class EC2(AWS):
         if self.instance:
             return self.instance.update()
 
-    def start(self, user_data=None):
-        if self.instance:
-            self._start_instance()
-        else:
-            self._create_and_start_instance(user_data)
-
-    def stop(self):
-        self._stop_instance()
-
-    def terminate(self):
-        self._terminate_instance()
-
-    @property
-    def state(self):
-        return self._get_instance_state()
-
-    @property
-    def instance(self):
-        if self._reservation:
-            return self._reservation.instances[0]
