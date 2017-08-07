@@ -16,8 +16,9 @@ class Instance(object):
 
     @declared_attr
     def recipe_id(cls):
-        return db.Column(
-            db.Integer, db.ForeignKey('recipe.id'), nullable=True)
+        return db.Column(db.Integer,
+                         db.ForeignKey('recipe.id', ondelete='SET NULL'),
+                         nullable=True)
 
     def __init__(self, instance_id, instance_state,
                  instance_size, instance_url, user, recipe, **kwargs):
