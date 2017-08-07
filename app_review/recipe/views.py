@@ -35,12 +35,25 @@ class RecipeAPI(Resource):
         return recipe_schema.dump(recipe)
 
     @jwt_required()
+    def put(self, recipe_id):
+        """Returns a recipe"""
+        recipe = self._get_recipe(recipe_id)
+        payload, errors = recipe_schema.load(request.get_json())
+        if errors:
+            return {'errors': errors}, 400
+        recipe.name = payload['name']
+        recipe.script = payload['script']
+        db.session.add(recipe)
+        db.session.commit()
+        return recipe_schema.dump(recipe)
+
+    @jwt_required()
     def delete(self, recipe_id):
         """Deletes a recipe"""
         recipe = self._get_recipe(recipe_id)
         db.session.delete(recipe)
         db.session.commit()
-        return {'message': 'success'}
+        return {}
 
 
 class RecipesAPI(Resource):
@@ -61,7 +74,7 @@ class RecipesAPI(Resource):
         recipe = Recipe(g.user, **data)
         db.session.add(recipe)
         db.session.commit()
-        return data
+        return recipe_schema.dump(recipe)
 
 
 recipe_api.add_resource(RecipeAPI, '/<int:recipe_id>')
