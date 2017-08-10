@@ -10,6 +10,7 @@ from app_review.instance.schemas import (pull_request_schema,
                                          instance_schema)
 from app_review.instance.models import PullRequestInstance
 from app_review.recipe.models import Recipe
+from app_review.repository.models import RepositoryLink
 
 
 instance_api_bp = Blueprint('instance_api', __name__)
@@ -33,26 +34,37 @@ class PullRequest(Resource):
             abort(404, message="Pull Request Not Found")
         return pull_request
 
-    def _get_instance(self, owner, repo, number, user):
+    def _get_instance(self, owner, repo, number):
         return PullRequestInstance.query.filter_by(
-            github_owner=owner, github_repository=repo,
-            github_pull_number=number, user_id=user.id,
+            github_pull_number=number, user_id=g.user.id,
         ).filter(
-            PullRequestInstance.instance_state != 'terminated').first()
+            PullRequestInstance.instance_state != 'terminated',
+            RepositoryLink.owner == owner,
+            RepositoryLink.repository == repo).first()
 
-    def _get_recipe(self, recipe_id, user):
+
+    def _get_recipe(self, recipe_id):
         recipe = Recipe.query.filter_by(
-            id=recipe_id, user_id=user.id).first()
+            id=recipe_id, user_id=g.user.id).first()
         if not recipe:
-            abort(500, message="Recipe Not Found")
+            abort(400, message="Recipe Not Found")
         return recipe
+
+    def _get_repository_link(self, owner, repo):
+        repo = RepositoryLink.query.filter_by(
+            owner=owner,
+            repository=repo,
+            user_id=g.user.id).first()
+        if not repo:
+            abort(400, message="Repository Not Linked")
+        return repo
 
     @jwt_required()
     def get(self, owner, repo, number):
         """Gets pull request information"""
         pull_request = self._get_pull_request(
             owner, repo, number)
-        instance = self._get_instance(owner, repo, number, g.user)
+        instance = self._get_instance(owner, repo, number)
         if instance:
             pull_request['instance'] = instance or {}
         return pull_request_schema.dump(pull_request)
@@ -65,8 +77,9 @@ class PullRequest(Resource):
             return {'errors': errors}, 400
 
         pull_request = self._get_pull_request(owner, repo, number)
-        instance = self._get_instance(owner, repo, number, g.user)
-        recipe = self._get_recipe(payload['recipe_id'], g.user)
+        instance = self._get_instance(owner, repo, number)
+        recipe = self._get_recipe(payload['recipe_id'])
+        repo_link = self._get_repository_link(owner, repo)
 
         ec2 = EC2(instance.instance_id if instance else None)
         ec2.start()
@@ -76,7 +89,7 @@ class PullRequest(Resource):
                 ec2.state,
                 ec2.instance.instance_type,
                 ec2.instance.public_dns_name,
-                owner, repo, number, g.user, recipe)
+                owner, repo_link, number, g.user, recipe)
         else:
             instance.instance_state = ec2.state
             instance.recipe_id = recipe.id
@@ -98,7 +111,7 @@ class PullRequest(Resource):
     def delete(self, owner, repo, number):
         """Stops or terminates a pull request instance"""
         pull_request = self._get_pull_request(owner, repo, number)
-        instance = self._get_instance(owner, repo, number, g.user)
+        instance = self._get_instance(owner, repo, number)
         terminate = request.args.get('terminate') == 'true'
         if instance:
             ec2 = EC2(instance.instance_id)

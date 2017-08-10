@@ -75,4 +75,7 @@ class GitHub(object):
         user = self._get('user')
         return self._search('issues', type="pr", user=user['login'], state="open")
 
-
+    @req_access_token
+    def get_repository(self, owner, repo):
+        """Returns repository info"""
+        return self._get('repos', owner, repo)

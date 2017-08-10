@@ -7,12 +7,18 @@ from app_review.settings import ProdConfig
 
 from app_review.auth.views import (auth_api_bp, auth_api,
                                    authenticate, identity)
+
 from app_review.user.models import User
 from app_review.user.views import user_api_bp, user_api
+
 from app_review.instance.models import PullRequestInstance
 from app_review.instance.views import instance_api_bp, instance_api
+
 from app_review.recipe.models import Recipe
 from app_review.recipe.views import recipe_api_bp, recipe_api
+
+from app_review.repository.models import RepositoryLink
+from app_review.repository.views import repository_api_bp, repository_api
 
 
 def create_app(config_object=ProdConfig):
@@ -42,6 +48,7 @@ def register_blueprints(app):
     app.register_blueprint(user_api_bp, url_prefix='/user')
     app.register_blueprint(instance_api_bp)
     app.register_blueprint(recipe_api_bp, url_prefix="/recipe")
+    app.register_blueprint(repository_api_bp, url_prefix="/repository")
 
 
 def register_shellcontext(app):
@@ -53,6 +60,7 @@ def register_shellcontext(app):
             'User': User,
             'PullRequestInstance': PullRequestInstance,
             'Recipe': Recipe,
+            'RepositoryLink': RepositoryLink,
         }
 
     app.shell_context_processor(shell_context)
