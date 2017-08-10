@@ -17,8 +17,6 @@ def before_request():
     g.user = current_identity
 
 
-
-
 class Repository(Resource):
     """Unlinks Github repositories"""
 

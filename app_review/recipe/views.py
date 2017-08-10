@@ -3,7 +3,7 @@ from flask_restful import Resource, Api, abort
 from flask_jwt import current_identity, jwt_required
 
 
-from app_review.recipe.models import Recipe
+from app_review.recipe.models import Recipe, RecipeVariable
 from app_review.recipe.schemas import recipe_schema
 from app_review.extensions import db
 
@@ -43,6 +43,8 @@ class RecipeAPI(Resource):
             return {'errors': errors}, 400
         recipe.name = payload['name']
         recipe.script = payload['script']
+        recipe.variables = [RecipeVariable(v['name'], v['value'])
+                            for v in payload['variables']]
         db.session.add(recipe)
         db.session.commit()
         return recipe_schema.dump(recipe)
@@ -68,14 +70,17 @@ class RecipesAPI(Resource):
     @jwt_required()
     def post(self):
         """Creates a new recipe for a user"""
-        data, errors = recipe_schema.load(request.get_json())
+        payload, errors = recipe_schema.load(request.get_json())
         if errors:
             return {'errors': errors}, 400
-        recipe = Recipe(g.user, **data)
+        recipe = Recipe(payload['name'], payload['script'], g.user)
+        recipe.variables = [RecipeVariable(v['name'], v['value'])
+                            for v in payload['variables']]
+        recipe.variables += recipe.default_vars()
         db.session.add(recipe)
         db.session.commit()
         return recipe_schema.dump(recipe)
 
 
 recipe_api.add_resource(RecipeAPI, '/<int:recipe_id>')
-recipe_api.add_resource(RecipesAPI, '/')
+recipe_api.add_resource(RecipesAPI, '')

@@ -10,10 +10,21 @@ class Recipe(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     name = db.Column(db.String(155), nullable=False)
 
-    def __init__(self, user, script, name):
-        self.user_id = user.id
-        self.script = script
+    variables = db.relationship(
+        "RecipeVariable",
+        single_parent=True,
+        cascade='all,delete-orphan',
+        backref=db.backref("recipe"),
+        lazy='joined')
+
+    def __init__(self, name, script, user):
         self.name = name
+        self.script = script
+        self.user_id = user.id
+
+    @classmethod
+    def default_vars(cls):
+        return [RecipeVariable('app_dir', '/srv/app')]
 
 
 class RecipeVariable(db.Model):
@@ -23,11 +34,9 @@ class RecipeVariable(db.Model):
     recipe_id = db.Column(db.Integer,
                           db.ForeignKey('recipe.id'),
                           primary_key=True)
-    name = db.Column(db.String(155), nullable=False)
+    name = db.Column(db.String(155), nullable=False, primary_key=True)
     value = db.Column(db.String(155), nullable=True)
 
-    def __init__(self, recipe, name, value):
-        self.recipe_id = recipe.id
+    def __init__(self, name, value):
         self.name = name
         self.value = value
-
