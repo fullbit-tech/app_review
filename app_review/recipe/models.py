@@ -15,3 +15,19 @@ class Recipe(db.Model):
         self.script = script
         self.name = name
 
+
+class RecipeVariable(db.Model):
+    """A variable to be parsed when rendering a recipe"""
+    __tablename__ = "recipe_variable"
+
+    recipe_id = db.Column(db.Integer,
+                          db.ForeignKey('recipe.id'),
+                          primary_key=True)
+    name = db.Column(db.String(155), nullable=False)
+    value = db.Column(db.String(155), nullable=True)
+
+    def __init__(self, recipe, name, value):
+        self.recipe_id = recipe.id
+        self.name = name
+        self.value = value
+
