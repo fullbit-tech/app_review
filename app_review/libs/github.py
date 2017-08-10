@@ -47,7 +47,7 @@ class GitHub(object):
         return r.json()
 
     @req_access_token
-    def _get(self, *args):
+    def _get(self, *args, **kwargs):
         r = requests.get(
             self.github_api_uri + '/'.join(args),
             headers={
@@ -60,8 +60,19 @@ class GitHub(object):
         return r.json()
 
     @req_access_token
+    def _search(self, context, **kwargs):
+        params = '+'.join(['{}:{}'.format(k, v) for k,v in kwargs.items()])
+        return self._get('search', context + '?q=' + params)
+
+    @req_access_token
     def get_pull_request(self, owner, repo, number):
         """Returns pull request info"""
         return self._get('repos', owner, repo, 'pulls', number)
+
+    @req_access_token
+    def get_pull_requests(self):
+        """Returns associated organizations"""
+        user = self._get('user')
+        return self._search('issues', type="pr", user=user['login'], state="open")
 
 

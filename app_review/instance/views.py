@@ -113,5 +113,25 @@ class PullRequest(Resource):
         return pull_request_schema.dump(pull_request)
 
 
+class PullRequests(Resource):
+
+    def _get_pull_requests(self):
+        """Get all open pull request from the github API"""
+        gh = GitHub(access_token=g.user.github_access_token)
+        try:
+            pull_requests = gh.get_pull_requests()
+        except GitHubException:
+            abort(400, message="Pull Requests Not Found")
+        return pull_requests
+
+    @jwt_required()
+    def get(self):
+        pull_requests = self._get_pull_requests()
+        return pull_request_schema.dump(pull_requests['items'], many=True)
+
+
+
 instance_api.add_resource(
     PullRequest, '/pull-request/<owner>/<repo>/<number>')
+instance_api.add_resource(
+    PullRequests, '/instance')
