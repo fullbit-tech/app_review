@@ -2,8 +2,8 @@ from marshmallow import Schema, fields
 
 
 class InstanceSchema(Schema):
-    instance_size = fields.String(required=True, allow_none=False)
-    recipe_id = fields.Integer(required=True)
+    intance_size = fields.String(required=True, validate=lambda s: s != "")
+    recipe_id = fields.String(required=True, validate=lambda s: s != "")
 
     class Meta:
         fields = ('instance_id', 'instance_state', 'recipe_id',
