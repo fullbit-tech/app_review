@@ -1,6 +1,11 @@
 from app_review.extensions import db
 
 
+RECIPE_CONSTANTS = {
+    'app_dir': '/srv/app',
+}
+
+
 class Recipe(db.Model):
     """Instance recipe to run on startup"""
     __tablename__ = "recipe"
@@ -25,6 +30,17 @@ class Recipe(db.Model):
     @classmethod
     def default_vars(cls):
         return [RecipeVariable('app_dir', '/srv/app')]
+
+    def render_script(self):
+        script = self.script
+        for variable in self.variables:
+            script = script.replace('{{{}}}'.format(variable.name),
+                                    variable.value)
+
+        for name, value in RECIPE_CONSTANTS.items():
+            script = script.replace('{{{}}}'.format(name), value)
+
+        return script
 
 
 class RecipeVariable(db.Model):

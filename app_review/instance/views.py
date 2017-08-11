@@ -103,7 +103,7 @@ class PullRequest(Resource):
         ssh.wait_for_conn()
         ssh.clone_repository(pull_request['base']['repo']['clone_url'])
         ssh.checkout_branch(pull_request['head']['ref'])
-        ssh.run_script(recipe.script)
+        ssh.run_script(recipe.render_script())
 
         return pull_request_schema.dump(pull_request)
 

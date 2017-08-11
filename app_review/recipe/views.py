@@ -76,7 +76,6 @@ class RecipesAPI(Resource):
         recipe = Recipe(payload['name'], payload['script'], g.user)
         recipe.variables = [RecipeVariable(v['name'], v['value'])
                             for v in payload['variables']]
-        recipe.variables += recipe.default_vars()
         db.session.add(recipe)
         db.session.commit()
         return recipe_schema.dump(recipe)
