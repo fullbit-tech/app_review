@@ -22,4 +22,11 @@ class RecipeSchema(Schema):
     variables = fields.Nested(RecipeVariableSchema, missing=list, many=True)
 
 
+class RecipeDropInSchema(Schema):
+    id = fields.Integer()
+    script = fields.String(required=True, validate=lambda s: s != "")
+    name = fields.String(required=True, validate=lambda s: s != "")
+
+
 recipe_schema = RecipeSchema()
+recipe_drop_in_schema= RecipeDropInSchema()

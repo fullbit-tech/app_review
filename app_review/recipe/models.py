@@ -56,3 +56,16 @@ class RecipeVariable(db.Model):
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+
+class RecipeDropIn(db.Model):
+    """A pre-created recipe script that can be added to a recipe"""
+    __tablename__ = "recipe_drop_in"
+
+    id = db.Column(db.Integer, primary_key=True)
+    script = db.Column(db.String, nullable=False)
+    name = db.Column(db.String(155), nullable=False)
+
+    def __init__(self, name, script):
+        self.name = name
+        self.script = script

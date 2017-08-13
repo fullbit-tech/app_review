@@ -3,8 +3,10 @@ from flask_restful import Resource, Api, abort
 from flask_jwt import current_identity, jwt_required
 
 
-from app_review.recipe.models import Recipe, RecipeVariable
-from app_review.recipe.schemas import recipe_schema
+from app_review.recipe.models import (Recipe, RecipeVariable,
+                                      RecipeDropIn)
+from app_review.recipe.schemas import (recipe_schema,
+                                       recipe_drop_in_schema)
 from app_review.extensions import db
 
 
@@ -81,5 +83,16 @@ class RecipesAPI(Resource):
         return recipe_schema.dump(recipe)
 
 
+class RecipeDropInAPI(Resource):
+    """Recipe Drop In endpoints"""
+
+    @jwt_required()
+    def get(self):
+        """Gets all available recipe drop ins"""
+        drop_ins = RecipeDropIn.query.all()
+        return recipe_drop_in_schema.dump(drop_ins, many=True)
+
+
 recipe_api.add_resource(RecipeAPI, '/<int:recipe_id>')
 recipe_api.add_resource(RecipesAPI, '')
+recipe_api.add_resource(RecipeDropInAPI, '/drop-ins')

@@ -14,7 +14,8 @@ from app_review.user.views import user_api_bp, user_api
 from app_review.instance.models import PullRequestInstance
 from app_review.instance.views import instance_api_bp, instance_api
 
-from app_review.recipe.models import Recipe
+from app_review.recipe.models import (Recipe, RecipeDropIn,
+                                      RecipeVariable)
 from app_review.recipe.views import recipe_api_bp, recipe_api
 
 from app_review.repository.models import RepositoryLink
@@ -60,6 +61,8 @@ def register_shellcontext(app):
             'User': User,
             'PullRequestInstance': PullRequestInstance,
             'Recipe': Recipe,
+            'RecipeVariable': RecipeVariable,
+            'RecipeDropIn': RecipeDropIn,
             'RepositoryLink': RepositoryLink,
         }
 
