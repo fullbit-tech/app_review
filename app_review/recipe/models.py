@@ -50,7 +50,7 @@ class RecipeVariable(db.Model):
     recipe_id = db.Column(db.Integer,
                           db.ForeignKey('recipe.id'),
                           primary_key=True)
-    name = db.Column(db.String(155), nullable=False, primary_key=True)
+    name = db.Column(db.String(155), nullable=False)
     value = db.Column(db.String(155), nullable=True)
 
     def __init__(self, name, value):

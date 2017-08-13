@@ -1,9 +1,18 @@
-from marshmallow import fields, Schema, post_load, ValidationError
+from marshmallow import (fields, Schema, post_load,
+                         ValidationError, validates)
+
+from app_review.recipe.models import RECIPE_CONSTANTS
 
 
 class RecipeVariableSchema(Schema):
     name = fields.String(required=True, validate=lambda s: s != "")
     value = fields.String(required=True, validate=lambda s: s != "")
+
+    @validates('name')
+    def validate_name(self, name):
+        if name in RECIPE_CONSTANTS:
+            raise ValidationError(
+                '{} is a reserved variable name'.format(name))
 
 
 class RecipeSchema(Schema):
@@ -11,13 +20,6 @@ class RecipeSchema(Schema):
     script = fields.String(required=True, validate=lambda s: s != "")
     name = fields.String(required=True, validate=lambda s: s != "")
     variables = fields.Nested(RecipeVariableSchema, missing=list, many=True)
-
-    @post_load
-    def validate_unique_vars(self, data):
-        var_names = [v['name'] for v in data['variables']]
-        if len(var_names) > len(set(var_names)):
-            raise ValidationError(
-                'Duplicate Recipe Variable exists', 'variables')
 
 
 recipe_schema = RecipeSchema()

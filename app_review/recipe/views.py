@@ -38,13 +38,13 @@ class RecipeAPI(Resource):
     def put(self, recipe_id):
         """Returns a recipe"""
         recipe = self._get_recipe(recipe_id)
-        payload, errors = recipe_schema.load(request.get_json())
+        data, errors = recipe_schema.load(request.get_json())
         if errors:
             return {'errors': errors}, 400
-        recipe.name = payload['name']
-        recipe.script = payload['script']
+        recipe.name = data['name']
+        recipe.script = data['script']
         recipe.variables = [RecipeVariable(v['name'], v['value'])
-                            for v in payload['variables']]
+                            for v in data['variables']]
         db.session.add(recipe)
         db.session.commit()
         return recipe_schema.dump(recipe)
