@@ -11,6 +11,7 @@ from app_review.instance.schemas import (pull_request_schema,
 from app_review.instance.models import PullRequestInstance
 from app_review.recipe.models import Recipe
 from app_review.repository.models import RepositoryLink
+from app_review.repository.schemas import repository_pull_request_schema
 
 
 instance_api_bp = Blueprint('instance_api', __name__)
@@ -128,19 +129,24 @@ class PullRequest(Resource):
 
 class PullRequests(Resource):
 
-    def _get_pull_requests(self):
+    def _get_pull_requests(self, owner, repo):
         """Get all open pull request from the github API"""
         gh = GitHub(access_token=g.user.github_access_token)
         try:
-            pull_requests = gh.get_pull_requests()
+            pull_requests = gh.get_pull_requests(owner, repo)
         except GitHubException:
             abort(400, message="Pull Requests Not Found")
         return pull_requests
 
     @jwt_required()
     def get(self):
-        pull_requests = self._get_pull_requests()
-        return pull_request_schema.dump(pull_requests['items'], many=True)
+        instances = []
+        for repo_link in RepositoryLink.query.filter_by(user_id=g.user.id):
+            instances.append({
+                'pull_requests': self._get_pull_requests(repo_link.owner, repo_link.repository),
+                'respository_link': repo_link,
+            })
+        return repository_pull_request_schema.dump(instances, many=True)
 
 
 

@@ -2,6 +2,7 @@ from marshmallow import (Schema, fields,
                          validates_schema, ValidationError)
 
 from app_review.repository.models import RepositoryLink
+from app_review.instance.schemas import PullRequestSchema
 
 
 class RepositoryLinkSchema(Schema):
@@ -17,4 +18,10 @@ class RepositoryLinkSchema(Schema):
                 'Repository is already linked', 'repository')
 
 
+class RepositoryPullRequestsSchema(Schema):
+    respository_link = fields.Nested(RepositoryLinkSchema)
+    pull_requests = fields.Nested(PullRequestSchema, many=True)
+
+
 repository_link_schema = RepositoryLinkSchema()
+repository_pull_request_schema = RepositoryPullRequestsSchema()
