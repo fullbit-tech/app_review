@@ -100,11 +100,30 @@ class PullRequest(Resource):
         db.session.add(instance)
         db.session.commit()
 
+        def _terminate_instance():
+            ec2.terminate()
+            instance.instance_state = ec2.state
+            db.session.add(instance)
+            db.session.commit()
+
         ssh = SSH(instance.instance_url, g.user.github_access_token)
-        ssh.wait_for_conn()
-        ssh.clone_repository(pull_request['base']['repo']['clone_url'])
-        ssh.checkout_branch(pull_request['head']['ref'])
-        ssh.run_script(recipe.render_script())
+        errors = []
+        try:
+            ssh.wait_for_conn()
+            ssh.clone_repository(pull_request['base']['repo']['clone_url'])
+            ssh.checkout_branch(pull_request['head']['ref'])
+        except SystemExit:
+            _terminate_instance()
+            return {
+                'error': 'An error occured while starting the instance'
+            }, 400
+        try:
+            ssh.run_script(recipe.render_script())
+        except SystemExit:
+            _terminate_instance()
+            return {
+                'error': 'An error occured while running a recipe'
+            }, 400
 
         return pull_request_schema.dump(pull_request)
 
