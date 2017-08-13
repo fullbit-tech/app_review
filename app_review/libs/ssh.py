@@ -45,6 +45,7 @@ class SSH(object):
             self._wait_for_conn()
 
     def _clone_repository(self, repo_url):
+        run("sudo apt-get update -y")
         run("sudo apt-get install git -y")
         run("sudo rm -rf /srv/app")
         run("sudo git clone {} /srv/app".format(repo_url))
