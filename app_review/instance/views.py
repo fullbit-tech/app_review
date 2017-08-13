@@ -35,6 +35,19 @@ class PullRequest(Resource):
             abort(404, message="Pull Request Not Found")
         return pull_request
 
+    def _notify_pull_request(self, comments_url, instance_url):
+        """Create a comment on the pull request to indicate that an
+           instance has been created for it.
+        """
+        gh = GitHub(access_token=g.user.github_access_token)
+        message = ("An App Review instance has been created for this "
+                   "pull request: [{url}]({url})".format(
+                       url=instance_url))
+        try:
+            gh.create_comment(comments_url, message)
+        except GitHubException:
+            pass
+
     def _get_instance(self, owner, repo, number):
         return PullRequestInstance.query.filter_by(
             github_pull_number=number, user_id=g.user.id,
@@ -124,6 +137,10 @@ class PullRequest(Resource):
             return {
                 'error': 'An error occured while running a recipe'
             }, 400
+
+        self._notify_pull_request(
+            pull_request['comments_url'],
+            'http://' + instance.instance_url)
 
         return pull_request_schema.dump(pull_request)
 

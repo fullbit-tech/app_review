@@ -61,6 +61,19 @@ class GitHub(object):
         return r.json()
 
     @req_access_token
+    def _create_comment(self, url, message):
+        r = requests.post(
+            url,
+            json={"body": message},
+            headers={
+                'Accept': 'application/json',
+                'Authorization': 'token ' + self.access_token,
+                'User-Agent': self.user_agent,
+            })
+        return r.json()
+
+
+    @req_access_token
     def get_pull_request(self, owner, repo, number):
         """Returns pull request info"""
         return self._get('repos', owner, repo, 'pulls', number)
@@ -74,3 +87,8 @@ class GitHub(object):
     def get_repository(self, owner, repo):
         """Returns repository info"""
         return self._get('repos', owner, repo)
+
+    @req_access_token
+    def create_comment(self, url, message):
+        """Returns repository info"""
+        return self._create_comment(url, message)
