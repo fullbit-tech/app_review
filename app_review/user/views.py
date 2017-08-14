@@ -29,14 +29,19 @@ class Register(Resource):
         return {'message': 'success'}
 
 
-class UserInfo(Resource):
+class UserAPI(Resource):
 
     @jwt_required()
     def get(self):
-        """Get current user info"""
-        if g.user:
-            return user_schema.dump(g.user)
+        """Get current user"""
+        return user_schema.dump(g.user)
+
+    @jwt_required()
+    def delete(self):
+        """Deactivate current user"""
+        g.user.deactivate()
+        return {}
 
 
 user_api.add_resource(Register, '/register')
-user_api.add_resource(UserInfo, '/')
+user_api.add_resource(UserAPI, '')

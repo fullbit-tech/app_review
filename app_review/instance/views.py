@@ -94,6 +94,7 @@ class PullRequest(Resource):
         instance = self._get_instance(owner, repo, number)
         recipe = self._get_recipe(payload['recipe_id'])
         repo_link = self._get_repository_link(owner, repo)
+        _should_provision = instance is None
 
         ec2 = EC2(instance.instance_id if instance else None)
         ec2.start()
@@ -108,6 +109,7 @@ class PullRequest(Resource):
             instance.instance_state = ec2.state
             instance.recipe_id = recipe.id
             instance.instance_size = payload['instance_size']
+            instance.instance_url = ec2.instance.public_dns_name
 
         pull_request['instance'] = instance
         db.session.add(instance)
@@ -130,13 +132,14 @@ class PullRequest(Resource):
             return {
                 'error': 'An error occured while starting the instance'
             }, 400
-        try:
-            ssh.run_script(recipe.render_script())
-        except SystemExit:
-            _terminate_instance()
-            return {
-                'error': 'An error occured while running a recipe'
-            }, 400
+        if _should_provision:
+            try:
+                ssh.run_script(recipe.render_script())
+            except SystemExit:
+                _terminate_instance()
+                return {
+                    'error': 'An error occured while running a recipe'
+                }, 400
 
         self._notify_pull_request(
             pull_request['comments_url'],

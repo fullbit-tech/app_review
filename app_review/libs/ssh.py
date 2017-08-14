@@ -1,5 +1,5 @@
 import time
-from fabric.api import env, execute, run
+from fabric.api import env, execute, sudo
 from fabric.exceptions import NetworkError
 from flask import current_app
 
@@ -40,24 +40,24 @@ class SSH(object):
     def _wait_for_conn(self):
         try:
             time.sleep(20)
-            run("pwd")
+            sudo("pwd")
         except NetworkError:
             self._wait_for_conn()
 
     def _clone_repository(self, repo_url):
-        run("sudo apt-get update -y")
-        run("sudo apt-get install git -y")
-        run("sudo rm -rf /srv/app")
-        run("sudo git clone {} /srv/app".format(repo_url))
+        sudo("apt-get update -y")
+        sudo("apt-get install git -y")
+        sudo("rm -rf /srv/app")
+        sudo("git clone {} /srv/app".format(repo_url))
 
     def _checkout_branch(self, branch):
-        run("sudo git -C /srv/app fetch")
-        run("sudo git -C /srv/app checkout {branch}".format(
+        sudo("git -C /srv/app fetch")
+        sudo("git -C /srv/app checkout {branch}".format(
             branch=branch))
 
     def _update_branch(self, branch):
-        run("sudo git -C /srv/app reset --hard origin/{branch}".format(
+        sudo("git -C /srv/app reset --hard origin/{branch}".format(
             branch=branch))
 
     def _run_script(self, script):
-        run(script)
+        sudo(script)

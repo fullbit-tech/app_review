@@ -1,11 +1,11 @@
 from marshmallow import fields, Schema, ValidationError, validates
 
-from app_review.user.models import User
+from app_review.user.models import User, UserStatus
 
 
 class RegisterUserSchema(Schema):
     email = fields.Email(required=True)
-    password = fields.Str(load_only=True, required=True)
+    password = fields.String(load_only=True, required=True)
 
     @validates('email')
     def validate_email(self, email):
@@ -15,8 +15,9 @@ class RegisterUserSchema(Schema):
 
 
 class UserSchema(Schema):
+    status = fields.Function(lambda obj: UserStatus(obj.status).name)
     class Meta:
-        fields = ('email', 'github_verified')
+        fields = ('email', 'github_verified', 'status')
 
 
 register_user_schema = RegisterUserSchema()

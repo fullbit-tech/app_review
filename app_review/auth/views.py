@@ -3,7 +3,7 @@ from flask_restful import Resource, Api
 from flask_jwt import current_identity, jwt_required
 
 from app_review.extensions import db
-from app_review.user.models import User
+from app_review.user.models import User, UserStatus
 from app_review.libs.github import GitHub
 
 
@@ -18,7 +18,8 @@ def before_request():
 
 def authenticate(email, password):
     """Flask-JWT authorization callback"""
-    user = User.query.filter_by(email=email).first()
+    user = User.query.filter_by(email=email,
+                                status=UserStatus.active.value).first()
     if user and user.check_password(password):
         return user
 

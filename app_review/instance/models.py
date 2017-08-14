@@ -1,4 +1,6 @@
 from sqlalchemy.ext.declarative import declared_attr
+
+from app_review.libs.aws import EC2
 from app_review.extensions import db
 
 
@@ -54,3 +56,11 @@ class PullRequestInstance(Instance, db.Model):
             instance_size=instance_size, instance_url=instance_url,
             recipe=recipe)
         self.github_pull_number = pull_number
+
+    def terminate(self):
+        """Terminates the associated ec2 instance"""
+        ec2 = EC2(self.instance_id)
+        ec2.terminate()
+        self.instance_state = ec2.state
+        db.session.add(self)
+        db.session.commit()
