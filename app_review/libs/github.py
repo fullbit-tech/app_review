@@ -92,3 +92,8 @@ class GitHub(object):
     def create_comment(self, url, message):
         """Returns repository info"""
         return self._create_comment(url, message)
+
+    @req_access_token
+    def get_user(self):
+        """Returns authenticated user info"""
+        return self._get('user')

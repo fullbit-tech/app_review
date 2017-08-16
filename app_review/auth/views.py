@@ -48,6 +48,7 @@ class GitHubAuthCallBack(Resource):
         user.github_access_token = access_token
         db.session.add(user)
         db.session.commit()
+        user.populate_profile()
         return redirect(current_app.config['APP_REVIEW_WEB_URL'] +
                         '?github_auth=true')
 

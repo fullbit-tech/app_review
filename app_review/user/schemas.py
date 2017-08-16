@@ -17,7 +17,9 @@ class RegisterUserSchema(Schema):
 class UserSchema(Schema):
     status = fields.Function(lambda obj: UserStatus(obj.status).name)
     class Meta:
-        fields = ('email', 'github_verified', 'status')
+        fields = ('email', 'github_verified', 'status',
+                  'github_auth_link', 'github_avatar',
+                  'github_username')
 
 
 register_user_schema = RegisterUserSchema()
