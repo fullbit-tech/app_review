@@ -2,8 +2,10 @@ from marshmallow import Schema, fields
 
 
 class InstanceSchema(Schema):
-    intance_size = fields.String(required=True, validate=lambda s: s != "")
-    recipe_id = fields.String(required=True, validate=lambda s: s != "")
+    intance_size = fields.String(required=True,
+                                 validate=lambda s: s != "")
+    recipe_id = fields.String(required=True,
+                              validate=lambda s: s != "")
 
     class Meta:
         fields = ('instance_id', 'instance_state', 'recipe_id',
@@ -18,12 +20,15 @@ class PullRequestUser(Schema):
 
 
 class PullRequestSchema(Schema):
-    class Meta:
-        fields = ('number', 'state', 'body', 'html_url', 'title', 'instance', 'user')
-        dump_only = ('number', 'state', 'body', 'html_url', 'title', 'instance', 'user')
-
-    instance = fields.Nested(InstanceSchema)
+    instance =  fields.Nested(InstanceSchema)
     user = fields.Nested(PullRequestUser)
+
+    class Meta:
+        fields = ('number', 'state', 'body', 'html_url',
+                  'title', 'instance', 'user')
+        dump_only = ('number', 'state', 'body', 'html_url',
+                     'title', 'instance', 'user')
+
 
 
 pull_request_schema = PullRequestSchema()
