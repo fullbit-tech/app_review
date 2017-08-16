@@ -19,6 +19,7 @@ class RepositoryLink(db.Model):
 
     user = db.relationship(
         "User",
+        single_parent=True,
         cascade='all,delete-orphan',
         backref=db.backref("repository_links"))
 

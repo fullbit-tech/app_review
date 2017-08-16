@@ -11,7 +11,6 @@ from app_review.instance.schemas import (pull_request_schema,
 from app_review.instance.models import PullRequestInstance
 from app_review.recipe.models import Recipe
 from app_review.repository.models import RepositoryLink
-from app_review.repository.schemas import repository_pull_request_schema
 
 
 instance_api_bp = Blueprint('instance_api', __name__)
@@ -56,7 +55,6 @@ class PullRequest(Resource):
             RepositoryLink.owner == owner,
             RepositoryLink.repository == repo).first()
 
-
     def _get_recipe(self, recipe_id):
         recipe = Recipe.query.filter_by(
             id=recipe_id, user_id=g.user.id).first()
@@ -78,9 +76,9 @@ class PullRequest(Resource):
         """Gets pull request information"""
         pull_request = self._get_pull_request(
             owner, repo, number)
-        instance = self._get_instance(owner, repo, number)
-        if instance:
-            pull_request['instance'] = instance or {}
+        repo_link = self._get_repository_link(owner, repo)
+        pull_request['instance'] = PullRequestInstance.get_or_create(
+            repo_link, number)
         return pull_request_schema.dump(pull_request)
 
     @jwt_required()
@@ -91,35 +89,12 @@ class PullRequest(Resource):
             return {'errors': errors}, 400
 
         pull_request = self._get_pull_request(owner, repo, number)
-        instance = self._get_instance(owner, repo, number)
-        recipe = self._get_recipe(payload['recipe_id'])
         repo_link = self._get_repository_link(owner, repo)
-        _should_provision = instance is None
+        instance = PullRequestInstance.get_or_create(repo_link, number)
+        recipe = self._get_recipe(payload['recipe_id'])
+        _should_provision = instance.instance_id is None
 
-        ec2 = EC2(instance.instance_id if instance else None)
-        ec2.start()
-        if not instance:
-            instance = PullRequestInstance(
-                ec2.instance.id,
-                ec2.state,
-                ec2.instance.instance_type,
-                ec2.instance.public_dns_name,
-                owner, repo_link, number, g.user, recipe)
-        else:
-            instance.instance_state = ec2.state
-            instance.recipe_id = recipe.id
-            instance.instance_size = payload['instance_size']
-            instance.instance_url = ec2.instance.public_dns_name
-
-        pull_request['instance'] = instance
-        db.session.add(instance)
-        db.session.commit()
-
-        def _terminate_instance():
-            ec2.terminate()
-            instance.instance_state = ec2.state
-            db.session.add(instance)
-            db.session.commit()
+        instance.start(recipe.id)
 
         ssh = SSH(instance.instance_url, g.user.github_access_token)
         errors = []
@@ -128,7 +103,7 @@ class PullRequest(Resource):
             ssh.clone_repository(pull_request['base']['repo']['clone_url'])
             ssh.checkout_branch(pull_request['head']['ref'])
         except SystemExit:
-            _terminate_instance()
+            instance.terminate()
             return {
                 'error': 'An error occured while starting the instance'
             }, 400
@@ -136,7 +111,7 @@ class PullRequest(Resource):
             try:
                 ssh.run_script(recipe.render_script())
             except SystemExit:
-                _terminate_instance()
+                instance.terminate()
                 return {
                     'error': 'An error occured while running a recipe'
                 }, 400
@@ -145,6 +120,7 @@ class PullRequest(Resource):
             pull_request['comments_url'],
             'http://' + instance.instance_url)
 
+        pull_request['instance'] = instance
         return pull_request_schema.dump(pull_request)
 
     @jwt_required()
@@ -153,16 +129,11 @@ class PullRequest(Resource):
         pull_request = self._get_pull_request(owner, repo, number)
         instance = self._get_instance(owner, repo, number)
         terminate = request.args.get('terminate') == 'true'
-        if instance:
-            ec2 = EC2(instance.instance_id)
-            if terminate:
-                ec2.terminate()
-            else:
-                ec2.stop()
-            instance.instance_state = ec2.state
-            db.session.add(instance)
-            db.session.commit()
-        pull_request['instance'] = {} if terminate else instance
+        if terminate:
+            instance.terminate()
+        else:
+            instance.stop()
+        pull_request['instance'] = instance
         return pull_request_schema.dump(pull_request)
 
 
@@ -179,13 +150,18 @@ class PullRequests(Resource):
 
     @jwt_required()
     def get(self):
-        instances = []
+        pull_requests = []
+        filter_active = request.args.get('active') == 'true'
         for repo_link in RepositoryLink.query.filter_by(user_id=g.user.id):
-            instances.append({
-                'pull_requests': self._get_pull_requests(repo_link.owner, repo_link.repository),
-                'respository_link': repo_link,
-            })
-        return repository_pull_request_schema.dump(instances, many=True)
+            for i, pull_request in enumerate(self._get_pull_requests(
+                    repo_link.owner, repo_link.repository)):
+                instance = PullRequestInstance.get_or_create(
+                    repo_link, str(pull_request['number']))
+                if filter_active and not instance.instance_id:
+                    continue
+                pull_request['instance'] = instance
+                pull_requests.append(pull_request)
+        return pull_request_schema.dump(pull_requests, many=True)
 
 
 

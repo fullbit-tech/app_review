@@ -7,10 +7,10 @@ from app_review.extensions import db
 class Instance(object):
     """Mixin for instance models"""
 
-    instance_id = db.Column(db.String)
-    instance_state = db.Column(db.String)
-    instance_size = db.Column(db.String)
-    instance_url = db.Column(db.String)
+    instance_id = db.Column(db.String, nullable=True)
+    instance_state = db.Column(db.String, default="dormant")
+    instance_size = db.Column(db.String, nullable=True)
+    instance_url = db.Column(db.String, nullable=True)
 
     @declared_attr
     def user_id(cls):
@@ -27,18 +27,6 @@ class Instance(object):
              db.ForeignKey('recipe.id', ondelete='SET NULL'),
              nullable=True)
 
-    def __init__(self, instance_id, instance_state,
-                 instance_size, instance_url, user,
-                 recipe, repository_link, **kwargs):
-        super(Instance, self).__init__(**kwargs)
-        self.instance_id = instance_id
-        self.instance_state = instance_state
-        self.instance_size = instance_size
-        self.instance_url = instance_url
-        self.user_id = user.id
-        self.recipe_id = recipe.id
-        self.repository_link_id = repository_link.id
-
 
 class PullRequestInstance(Instance, db.Model):
     """An instance created for a pull request"""
@@ -47,20 +35,46 @@ class PullRequestInstance(Instance, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     github_pull_number = db.Column(db.String)
 
-    def __init__(self, instance_id, instance_state, instance_size,
-                 instance_url, owner, repository_link, pull_number, user,
-                 recipe):
-        super(PullRequestInstance, self).__init__(
-            repository_link=repository_link, user=user,
-            instance_id=instance_id, instance_state=instance_state,
-            instance_size=instance_size, instance_url=instance_url,
-            recipe=recipe)
-        self.github_pull_number = pull_number
+    @classmethod
+    def get_or_create(cls, repo_link, pull_number, **kwargs):
+        instance = cls.query.filter_by(
+            repository_link_id=repo_link.id,
+            github_pull_number=pull_number).first()
+        if not instance:
+            instance = PullRequestInstance(
+                repository_link_id=repo_link.id,
+                github_pull_number=pull_number)
+            db.session.add(instance)
+            db.session.commit()
+        return instance
+
+    def start(self, recipe_id=None):
+        """Start or creates and starts the associated ec2 instance"""
+        ec2 = EC2(self.instance_id if self.instance_id else None)
+        ec2.start()
+        self.instance_id = ec2.instance.id
+        self.instance_state = ec2.state
+        self.instance_size = ec2.instance.instance_type
+        self.instance_url = ec2.instance.public_dns_name
+        self.recipe_id = recipe_id
+        db.session.add(self)
+        db.session.commit()
 
     def terminate(self):
         """Terminates the associated ec2 instance"""
         ec2 = EC2(self.instance_id)
         ec2.terminate()
+        self.instance_state = 'dormant'
+        self.instance_size = None
+        self.instance_id = None
+        self.instance_url = None
+        db.session.add(self)
+        db.session.commit()
+
+    def stop(self):
+        """Stops the associated ec2 instance"""
+        ec2 = EC2(self.instance_id)
+        ec2.stop()
         self.instance_state = ec2.state
         db.session.add(self)
         db.session.commit()
