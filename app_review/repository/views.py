@@ -5,6 +5,7 @@ from flask_jwt import current_identity, jwt_required
 from app_review.libs.github import GitHub, GitHubException
 from app_review.repository.models import RepositoryLink
 from app_review.repository.schemas import repository_link_schema
+from app_review.instance.models import PullRequestInstance
 from app_review.extensions import db
 
 
@@ -32,6 +33,12 @@ class Repository(Resource):
     @jwt_required()
     def delete(self, owner, repo):
         repo_link = self._get_repository_link(owner, repo)
+        pull_requests = PullRequestInstance.query.filter_by(
+            repository_link_id=repo_link.id,
+            user_id=g.user.id).filter(
+                PullRequestInstance.instance_state != 'terminated')
+        for pull_request in pull_requests:
+            pull_request.terminate()
         db.session.delete(repo_link)
         db.session.commit()
         return {}
@@ -39,6 +46,7 @@ class Repository(Resource):
 
 class Repositories(Resource):
     """Returns list of repository links"""
+
 
     def _get_repository(self, owner, repo):
         """Get a repository for a given owner and name"""
@@ -64,11 +72,11 @@ class Repositories(Resource):
             return {'errors': error}, 400
         owner = payload['owner']
         repo_name = payload['repository']
-        repository = self._get_repository(owner, repo_name)
+        self._get_repository(owner, repo_name)
         link = RepositoryLink(owner, repo_name, g.user)
         db.session.add(link)
         db.session.commit()
-        return repository_link_schema.dump(repository)
+        return repository_link_schema.dump(link)
 
 
 repository_api.add_resource(Repository, '/<owner>/<repo>')

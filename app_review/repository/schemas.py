@@ -19,7 +19,7 @@ class RepositoryLinkSchema(Schema):
 
 
 class RepositoryPullRequestsSchema(Schema):
-    respository_link = fields.Nested(RepositoryLinkSchema)
+    repository_link = fields.Nested(RepositoryLinkSchema)
     pull_requests = fields.Nested(PullRequestSchema, many=True)
 
 

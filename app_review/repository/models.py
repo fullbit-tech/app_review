@@ -10,10 +10,19 @@ class RepositoryLink(db.Model):
     repository = db.Column(db.String)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
+    pull_requests = db.relationship(
+        "PullRequestInstance",
+        single_parent=True,
+        cascade='all,delete-orphan',
+        backref=db.backref("repository_link"),
+        lazy='joined')
+
+    user = db.relationship(
+        "User",
+        cascade='all,delete-orphan',
+        backref=db.backref("repository_links"))
+
     def __init__(self, owner, repo, user):
         self.owner = owner
         self.repository = repo
         self.user_id = user.id
-
-
-
