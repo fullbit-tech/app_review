@@ -24,12 +24,12 @@ def before_request():
 
 class PullRequest(Resource):
 
-    def _get_pull_request(self, owner, repo, number):
+    def _get_pull_request(self, repo_link, number):
         """Get a pull request from the github API"""
         gh = GitHub(access_token=g.user.github_access_token)
         try:
             pull_request = gh.get_pull_request(
-                owner, repo, number)
+                repo_link.owner, repo_link.repository, number)
         except GitHubException:
             abort(404, message="Pull Request Not Found")
         return pull_request
@@ -47,19 +47,16 @@ class PullRequest(Resource):
         except GitHubException:
             pass
 
-    def _get_instance(self, owner, repo, number):
-        return PullRequestInstance.query.filter_by(
-            github_pull_number=number, user_id=g.user.id,
-        ).filter(
-            PullRequestInstance.instance_state != 'terminated',
-            RepositoryLink.owner == owner,
-            RepositoryLink.repository == repo).first()
+    def _get_instance(self, id):
+        instance = PullRequestInstance.query.filter_by(
+            id=id, user_id=g.user.id).first()
+        if not instance:
+            abort(400, message="Instance Not Found")
+        return instance
 
     def _get_recipe(self, recipe_id):
         recipe = Recipe.query.filter_by(
             id=recipe_id, user_id=g.user.id).first()
-        if not recipe:
-            abort(400, message="Recipe Not Found")
         return recipe
 
     def _get_repository_link(self, owner, repo):
@@ -72,29 +69,29 @@ class PullRequest(Resource):
         return repo
 
     @jwt_required()
-    def get(self, owner, repo, number):
+    def get(self, instance_id):
         """Gets pull request information"""
+        instance = self._get_instance(instance_id)
         pull_request = self._get_pull_request(
-            owner, repo, number)
-        repo_link = self._get_repository_link(owner, repo)
-        pull_request['instance'] = PullRequestInstance.get_or_create(
-            repo_link, number)
+            instance.repository_link, instance.github_pull_number)
+        pull_request['instance'] = instance
         return pull_request_schema.dump(pull_request)
 
     @jwt_required()
-    def post(self, owner, repo, number):
+    def post(self, instance_id):
         """Starts an instance for a pull request"""
+        instance = self._get_instance(instance_id)
         payload, errors = instance_schema.load(request.get_json())
         if errors:
             return {'errors': errors}, 400
 
-        pull_request = self._get_pull_request(owner, repo, number)
-        repo_link = self._get_repository_link(owner, repo)
-        instance = PullRequestInstance.get_or_create(repo_link, number)
+        pull_request = self._get_pull_request(
+            instance.repository_link, instance.github_pull_number)
         recipe = self._get_recipe(payload['recipe_id'])
         _should_provision = instance.instance_id is None
 
-        instance.start(recipe.id)
+        instance.start(commit=False)
+        instance.recipe = recipe
 
         ssh = SSH(instance.instance_url, g.user.github_access_token)
         errors = []
@@ -103,15 +100,15 @@ class PullRequest(Resource):
             ssh.clone_repository(pull_request['base']['repo']['clone_url'])
             ssh.checkout_branch(pull_request['head']['ref'])
         except SystemExit:
-            instance.terminate()
+            instance.terminate(commit=False)
             return {
                 'error': 'An error occured while starting the instance'
             }, 400
-        if _should_provision:
+        if _should_provision and recipe:
             try:
                 ssh.run_script(recipe.render_script())
             except SystemExit:
-                instance.terminate()
+                instance.terminate(commit=False)
                 return {
                     'error': 'An error occured while running a recipe'
                 }, 400
@@ -120,14 +117,17 @@ class PullRequest(Resource):
             pull_request['comments_url'],
             'http://' + instance.instance_url)
 
+        db.session.add(instance)
+        db.session.commit()
         pull_request['instance'] = instance
         return pull_request_schema.dump(pull_request)
 
     @jwt_required()
-    def delete(self, owner, repo, number):
+    def delete(self, instance_id):
         """Stops or terminates a pull request instance"""
-        pull_request = self._get_pull_request(owner, repo, number)
-        instance = self._get_instance(owner, repo, number)
+        instance = self._get_instance(instance_id)
+        pull_request = self._get_pull_request(
+            instance.repository_link, instance.github_pull_number)
         terminate = request.args.get('terminate') == 'true'
         if terminate:
             instance.terminate()
@@ -166,6 +166,6 @@ class PullRequests(Resource):
 
 
 instance_api.add_resource(
-    PullRequest, '/pull-request/<owner>/<repo>/<number>')
+    PullRequest, '/instance/<int:instance_id>')
 instance_api.add_resource(
     PullRequests, '/instance')

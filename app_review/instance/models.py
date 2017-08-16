@@ -43,12 +43,13 @@ class PullRequestInstance(Instance, db.Model):
         if not instance:
             instance = PullRequestInstance(
                 repository_link_id=repo_link.id,
-                github_pull_number=pull_number)
+                github_pull_number=pull_number,
+                user_id=repo_link.user.id)
             db.session.add(instance)
             db.session.commit()
         return instance
 
-    def start(self, recipe_id=None):
+    def start(self, commit=True):
         """Start or creates and starts the associated ec2 instance"""
         ec2 = EC2(self.instance_id if self.instance_id else None)
         ec2.start()
@@ -56,11 +57,11 @@ class PullRequestInstance(Instance, db.Model):
         self.instance_state = ec2.state
         self.instance_size = ec2.instance.instance_type
         self.instance_url = ec2.instance.public_dns_name
-        self.recipe_id = recipe_id
-        db.session.add(self)
-        db.session.commit()
+        if commit:
+            db.session.add(self)
+            db.session.commit()
 
-    def terminate(self):
+    def terminate(self, commit=True):
         """Terminates the associated ec2 instance"""
         ec2 = EC2(self.instance_id)
         ec2.terminate()
@@ -68,13 +69,15 @@ class PullRequestInstance(Instance, db.Model):
         self.instance_size = None
         self.instance_id = None
         self.instance_url = None
-        db.session.add(self)
-        db.session.commit()
+        if commit:
+            db.session.add(self)
+            db.session.commit()
 
-    def stop(self):
+    def stop(self, commit=True):
         """Stops the associated ec2 instance"""
         ec2 = EC2(self.instance_id)
         ec2.stop()
         self.instance_state = ec2.state
-        db.session.add(self)
-        db.session.commit()
+        if commit:
+            db.session.add(self)
+            db.session.commit()

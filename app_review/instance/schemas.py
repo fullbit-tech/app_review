@@ -4,10 +4,8 @@ from app_review.repository.schemas import RepositoryLinkSchema
 
 
 class InstanceSchema(Schema):
-    intance_size = fields.String(required=True,
-                                 validate=lambda s: s != "")
-    recipe_id = fields.String(required=True,
-                              validate=lambda s: s != "")
+    instance_size = fields.String(default="t2.small", allow_none=True)
+    recipe_id = fields.String(allow_none=True)
     repository_link = fields.Nested(RepositoryLinkSchema)
 
     class Meta:
