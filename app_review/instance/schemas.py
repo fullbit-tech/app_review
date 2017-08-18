@@ -17,8 +17,8 @@ class InstanceSchema(Schema):
 
 class PullRequestUser(Schema):
     class Meta:
-        fields = ('login', 'html_url', 'avatar_url')
-        dump_only = ('login', 'html_url', 'avatar_url')
+        fields = ('id', 'login', 'html_url', 'avatar_url')
+        dump_only = ('id', 'login', 'html_url', 'avatar_url')
 
 
 class PullRequestSchema(Schema):
