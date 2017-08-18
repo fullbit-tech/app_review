@@ -1,9 +1,10 @@
+from operator import itemgetter
+
 from flask import Blueprint, g, request
 from flask_restful import Resource, Api, abort
 from flask_jwt import current_identity, jwt_required
 
 from app_review.libs.github import GitHub, GitHubException
-from app_review.libs.aws import EC2
 from app_review.libs.ssh import SSH
 from app_review.extensions import db
 from app_review.instance.schemas import (pull_request_schema,
@@ -153,8 +154,11 @@ class PullRequests(Resource):
         pull_requests = []
         filter_active = request.args.get('active') == 'true'
         for repo_link in RepositoryLink.query.filter_by(user_id=g.user.id):
-            for i, pull_request in enumerate(self._get_pull_requests(
-                    repo_link.owner, repo_link.repository)):
+            github_pulls = sorted(
+                self._get_pull_requests(repo_link.owner,
+                                        repo_link.repository),
+                key=itemgetter('number'), reverse=True)
+            for i, pull_request in enumerate(github_pulls):
                 instance = PullRequestInstance.get_or_create(
                     repo_link, str(pull_request['number']))
                 if filter_active and not instance.instance_id:
