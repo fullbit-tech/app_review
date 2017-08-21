@@ -9,6 +9,9 @@ class RepositoryLinkSchema(Schema):
     repository = fields.String(required=True, validate=lambda s: s != "")
     owner = fields.String(required=True, validate=lambda s: s != "")
 
+    class Meta:
+        dump_only = ('id',)
+
     @validates_schema
     def validate_repo_link(self, data):
         repo_link = RepositoryLink.query.filter_by(
