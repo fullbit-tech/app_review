@@ -6,6 +6,7 @@ from app_review.libs.github import GitHub, GitHubException
 from app_review.repository.models import RepositoryLink
 from app_review.repository.schemas import repository_link_schema
 from app_review.instance.models import PullRequestInstance
+from app_review.hook.models import GithubHook
 from app_review.extensions import db
 
 
@@ -30,6 +31,16 @@ class Repository(Resource):
             abort(404, message="Repository Link Not Found")
         return repository
 
+    def _delete_repo_hook(self, hook):
+        gh = GitHub(access_token=g.user.github_access_token)
+        try:
+            hook = gh.delete_pull_request_hook(
+                hook.hook_repository_link.owner,
+                hook.hook_repository_link.repository,
+                hook.hook_id)
+        except GitHubException:
+            pass
+
     @jwt_required()
     def delete(self, owner, repo):
         repo_link = self._get_repository_link(owner, repo)
@@ -39,6 +50,9 @@ class Repository(Resource):
                 PullRequestInstance.instance_state != 'terminated')
         for pull_request in pull_requests:
             pull_request.terminate()
+        for hook in repo_link.github_hooks:
+            self._delete_repo_hook(hook)
+            db.session.delete(hook)
         db.session.delete(repo_link)
         db.session.commit()
         return {}
@@ -57,6 +71,14 @@ class Repositories(Resource):
             abort(400, error="Not Authorized to use that Repository")
         return repository
 
+    def _create_repo_hook(self, owner, repo):
+        gh = GitHub(access_token=g.user.github_access_token)
+        try:
+            hook = gh.create_pull_request_hook(owner, repo)
+        except GitHubException:
+            abort(400, error="Unable to subscribe to repository changes")
+        return hook
+
     def _get_repository_links(self):
         return RepositoryLink.query.filter_by(user_id=g.user.id)
 
@@ -70,10 +92,15 @@ class Repositories(Resource):
         payload, error = repository_link_schema.load(request.get_json())
         if error:
             return {'errors': error}, 400
+
         owner = payload['owner']
         repo_name = payload['repository']
         self._get_repository(owner, repo_name)
         link = RepositoryLink(owner, repo_name, g.user)
+
+        hook_data = self._create_repo_hook(owner, repo_name)
+        link.github_hooks.append(GithubHook(hook_id=hook_data['id']))
+
         db.session.add(link)
         db.session.commit()
         return repository_link_schema.dump(link)

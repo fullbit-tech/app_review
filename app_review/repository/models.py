@@ -20,8 +20,13 @@ class RepositoryLink(db.Model):
     user = db.relationship(
         "User",
         single_parent=True,
-        cascade='all,delete-orphan',
         backref=db.backref("repository_links"))
+
+    github_hooks = db.relationship(
+        "GithubHook",
+        single_parent=True,
+        cascade='all,delete-orphan',
+        backref=db.backref("hook_repository_link"))
 
     def __init__(self, owner, repo, user):
         self.owner = owner

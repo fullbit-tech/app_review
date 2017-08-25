@@ -16,6 +16,7 @@ class Config(object):
     # Github oAuth
     GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID')
     GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET')
+    GITHUB_SIGNATURE_SECRET = os.environ.get('GITHUB_SIGNATURE_SECRET')
 
     # JWT Settings
     JWT_EXPIRATION_DELTA = datetime.timedelta(days=1)
@@ -26,6 +27,10 @@ class Config(object):
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
     AWS_HOST_USERNAME = os.environ.get('AWS_HOST_USERNAME')
     AWS_KEY_FILE = os.environ.get('AWS_KEY_FILE')
+
+    # Celery
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+    CELERY_BROKER_URL = 'redis://localhost:6379'
 
 
 class ProdConfig(Config):

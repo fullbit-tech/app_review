@@ -2,7 +2,7 @@
 """The app module, containing the app factory function."""
 from flask import Flask
 
-from app_review.extensions import db, jwt, migrate, cors
+from app_review.extensions import db, jwt, migrate, cors, celery
 from app_review.settings import ProdConfig
 
 from app_review.auth.views import (auth_api_bp, auth_api,
@@ -20,6 +20,10 @@ from app_review.recipe.views import recipe_api_bp, recipe_api
 
 from app_review.repository.models import RepositoryLink
 from app_review.repository.views import repository_api_bp, repository_api
+
+from app_review.hook.views import hook_api_bp, hook_api
+from app_review.hook.models import GithubHook
+
 
 
 def create_app(config_object=ProdConfig):
@@ -41,6 +45,7 @@ def register_extensions(app):
     jwt(app, authenticate, identity)
     migrate.init_app(app, db)
     cors.init_app(app)
+    celery.init_app(app)
 
 
 def register_blueprints(app):
@@ -50,6 +55,7 @@ def register_blueprints(app):
     app.register_blueprint(instance_api_bp)
     app.register_blueprint(recipe_api_bp, url_prefix="/recipe")
     app.register_blueprint(repository_api_bp, url_prefix="/repository")
+    app.register_blueprint(hook_api_bp, url_prefix="/hook")
 
 
 def register_shellcontext(app):
@@ -64,6 +70,7 @@ def register_shellcontext(app):
             'RecipeVariable': RecipeVariable,
             'RecipeDropIn': RecipeDropIn,
             'RepositoryLink': RepositoryLink,
+            'GithubHook': GithubHook,
         }
 
     app.shell_context_processor(shell_context)

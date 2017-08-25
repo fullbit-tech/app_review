@@ -1,3 +1,6 @@
+import hmac
+import hashlib
+import base64
 import requests
 from flask import current_app, redirect
 
@@ -20,9 +23,16 @@ class GitHub(object):
         self.github_api_uri = 'https://api.github.com/'
         self.client_id = current_app.config['GITHUB_CLIENT_ID']
         self.client_secret = current_app.config['GITHUB_CLIENT_SECRET']
+        self.callback_url = current_app.config['APP_REVIEW_WEB_URL']
+        self.signature_secret = current_app.config['GITHUB_SIGNATURE_SECRET']
         self.access_token = access_token
         self.scope = 'user:email,repo'
         self.user_agent = 'App-Review'
+
+    def verify_signature(self, signature, body):
+        dig = 'sha1=' + hmac.new(self.signature_secret,
+                                 body, hashlib.sha1).hexdigest()
+        return hmac.compoare(dig, signature)
 
     def authorize(self):
         return redirect((
@@ -42,7 +52,7 @@ class GitHub(object):
             self.github_uri + 'login/oauth/access_token/',
             json=data,
             headers={'Accept': 'application/json'})
-        if r.status_code != 200:
+        if r.status_code != requests.codes.ok:
             raise GitHubException('Request Failed')
         return r.json()
 
@@ -56,7 +66,35 @@ class GitHub(object):
                 'Authorization': 'token ' + self.access_token,
                 'User-Agent': self.user_agent,
             })
-        if r.status_code != 200:
+        if r.status_code != requests.codes.ok:
+            raise GitHubException('Request Failed')
+        return r.json()
+
+    @req_access_token
+    def _post(self, *args, **kwargs):
+        r = requests.post(
+            self.github_api_uri + '/'.join(args),
+            json=kwargs,
+            headers={
+                'Accept': 'application/json',
+                'Authorization': 'token ' + self.access_token,
+                'User-Agent': self.user_agent,
+            })
+        return r.json()
+        if r.status_code != requests.codes.ok:
+            raise GitHubException('Request Failed')
+        return r.json()
+
+    @req_access_token
+    def _delete(self, *args):
+        r = requests.delete(
+            self.github_api_uri + '/'.join(args),
+            headers={
+                'Accept': 'application/json',
+                'Authorization': 'token ' + self.access_token,
+                'User-Agent': self.user_agent,
+            })
+        if r.status_code != requests.codes.ok:
             raise GitHubException('Request Failed')
         return r.json()
 
@@ -97,3 +135,22 @@ class GitHub(object):
     def get_user(self):
         """Returns authenticated user info"""
         return self._get('user')
+
+    @req_access_token
+    def create_pull_request_hook(self, owner, repo):
+        data = {
+            'name': 'web',
+            'active': True,
+            'events': ['pull_request'],
+            'config': {
+                'url': self.callback_url + '/hook/github/pull-request',
+                'content_type': 'json',
+                'secret': self.signature_secret,
+            }
+        }
+        return self._post('repos', owner, repo, 'hooks', **data)
+
+
+    @req_access_token
+    def delete_pull_request_hook(self, owner, repo, hook_id):
+        return self._delete('repos', owner, repo, 'hooks', str(hook_id))
