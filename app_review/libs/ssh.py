@@ -12,6 +12,7 @@ class SSH(object):
         env.key_filename = current_app.config['AWS_KEY_FILE']
         env.host_string = "{user}@{host}".format(
             user=current_app.config['AWS_HOST_USERNAME'], host=host)
+        env.output_prefix = False
         self.host = host
         self.access_token = access_token
 
@@ -22,20 +23,20 @@ class SSH(object):
                 access_key=self.access_token, repo_url=repo_url))
 
     def wait_for_conn(self):
-        self._wait_for_conn()
+        return self._wait_for_conn()
 
     def clone_repository(self, repo_url):
-        execute(self._clone_repository,
-                self._format_repo_auth(repo_url))
+        return execute(self._clone_repository,
+                       self._format_repo_auth(repo_url))['<local-only>']
 
     def checkout_branch(self, branch):
-        execute(self._checkout_branch, branch)
+        return execute(self._checkout_branch, branch)['<local-only>']
 
     def update_branch(self, branch):
-        execute(self._update_branch, branch)
+        return execute(self._update_branch, branch)['<local-only>']
 
     def run_script(self, script):
-        execute(self._run_script, script)
+        return execute(self._run_script, script)['<local-only>']
 
     def _wait_for_conn(self):
         try:
@@ -45,19 +46,19 @@ class SSH(object):
             self._wait_for_conn()
 
     def _clone_repository(self, repo_url):
-        sudo("apt-get update -y")
-        sudo("apt-get install git -y")
-        sudo("rm -rf /srv/app")
-        sudo("git clone {} /srv/app".format(repo_url))
+        return [sudo("apt-get update -y"),
+                sudo("apt-get install git -y"),
+                sudo("rm -rf /srv/app"),
+                sudo("git clone {} /srv/app".format(repo_url))]
 
     def _checkout_branch(self, branch):
-        sudo("git -C /srv/app fetch")
-        sudo("git -C /srv/app checkout {branch}".format(
-            branch=branch))
+        return [sudo("git -C /srv/app fetch"),
+                sudo("git -C /srv/app checkout {branch}".format(
+                    branch=branch))]
 
     def _update_branch(self, branch):
-        sudo("git -C /srv/app reset --hard origin/{branch}".format(
-            branch=branch))
+        return [sudo("git -C /srv/app reset --hard origin/{branch}".format(
+                branch=branch))]
 
     def _run_script(self, script):
-        sudo(script)
+        return [sudo(script, warn_only=True)]
