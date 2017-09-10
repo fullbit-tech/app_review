@@ -7,12 +7,14 @@ class InstanceSchema(Schema):
     instance_size = fields.String(default="t2.small", allow_none=True)
     recipe_id = fields.String(allow_none=True)
     repository_link = fields.Nested(RepositoryLinkSchema)
+    instance_output = fields.String()
 
     class Meta:
         fields = ('id', 'instance_id', 'instance_state', 'recipe_id',
-                  'instance_size', 'instance_url', 'repository_link')
+                  'instance_size', 'instance_url', 'repository_link',
+                  'instance_output')
         dump_only = ('id', 'instance_id', 'instance_state', 'instance_url',
-                     'repository_link')
+                     'repository_link', 'instance_output')
 
 
 class PullRequestUser(Schema):

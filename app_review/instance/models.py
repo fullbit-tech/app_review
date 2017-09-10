@@ -12,6 +12,10 @@ class Instance(object):
     instance_size = db.Column(db.String, nullable=True)
     instance_url = db.Column(db.String, nullable=True)
 
+    def __init__(self, *args, **kwargs):
+        super(Instance, self).__init__(*args, **kwargs)
+        self.instance_output = ''
+
     @declared_attr
     def user_id(cls):
         return db.Column(db.Integer, db.ForeignKey('user.id'))

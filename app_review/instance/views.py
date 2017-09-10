@@ -83,57 +83,78 @@ class PullRequest(Resource):
         """Starts an instance for a pull request"""
         instance = self._get_instance(instance_id)
         payload, errors = instance_schema.load(request.get_json())
-        if errors:
-            return {'errors': errors}, 400
-
         pull_request = self._get_pull_request(
             instance.repository_link, instance.github_pull_number)
         recipe = self._get_recipe(payload['recipe_id'])
         _should_provision = instance.instance_id is None
 
-        instance.start(commit=False)
-        instance.recipe = recipe
+        if not errors:
+            instance_output = [['starting instance...']]
+            instance.start(commit=False)
+            instance_output.append(['instance successfully started'])
+            instance.recipe = recipe
 
-        ssh = SSH(instance.instance_url, g.user.github_access_token)
-        errors = []
-        try:
-            ssh.wait_for_conn()
-            ssh.clone_repository(pull_request['base']['repo']['clone_url'])
-            ssh.checkout_branch(pull_request['head']['ref'])
-        except SystemExit:
-            instance.terminate(commit=False)
-            return {
-                'error': 'An error occured while starting the instance'
-            }, 400
-        if _should_provision and recipe:
+            ssh = SSH(instance.instance_url, g.user.github_access_token)
+
             try:
-                ssh.run_script(recipe.render_script())
+                ssh.wait_for_conn()
+                instance_output.append(['cloning repository...'])
+                ssh.clone_repository(pull_request['base']['repo']['clone_url'])
+                instance_output.append(['checking out pull request branch...'])
+                ssh.checkout_branch(pull_request['head']['ref'])
             except SystemExit:
+                instance_output.append(
+                    ['an error occured during startup, terminating instance...'])
                 instance.terminate(commit=False)
-                return {
-                    'error': 'An error occured while running a recipe'
-                }, 400
+                instance_output.append(['instance terminated'])
 
-        self._notify_pull_request(
-            pull_request['comments_url'],
-            'http://' + instance.instance_url)
+            if _should_provision and recipe and not pull_request.get('error'):
+                instance_output.append(['running recipe...'])
+                try:
+                    instance_output.append(
+                        ssh.run_script(recipe.render_script()))
+                except SystemExit:
+                    instance_output.append(
+                        ['recipe failed, terminating instance'])
+                    instance.terminate(commit=False)
+                    instance_output.append(['instance terminated'])
+                else:
+                    self._notify_pull_request(
+                        pull_request['comments_url'],
+                        'http://' + instance.instance_url)
 
         db.session.add(instance)
         db.session.commit()
+
+        instance.instance_output = '\n'.join(
+                [l for logs in instance_output for l in logs])
         pull_request['instance'] = instance
-        return pull_request_schema.dump(pull_request)
+        data, _ = pull_request_schema.dump(pull_request)
+
+        if errors:
+            data['errors'] = errors
+            return data, 400
+        return data
+
 
     @jwt_required()
     def delete(self, instance_id):
         """Stops or terminates a pull request instance"""
         instance = self._get_instance(instance_id)
+        instance_output = []
         pull_request = self._get_pull_request(
             instance.repository_link, instance.github_pull_number)
         terminate = request.args.get('terminate') == 'true'
         if terminate:
+            instance_output.append('terminating...')
             instance.terminate()
+            instance_output.append('successfully terminated')
         else:
+            instance_output.append('stopping...')
             instance.stop()
+            instance_output.append('successfully stopped')
+        instance.instance_output = '\n'.join(
+                [log for log in instance_output])
         pull_request['instance'] = instance
         return pull_request_schema.dump(pull_request)
 
